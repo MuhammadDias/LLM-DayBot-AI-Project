@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DayBot - Welcome</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <!-- Navbar -->
+    <nav class="landing-nav">
+      <div class="logo"><i class="fas fa-cube"></i> DayBot</div>
+      <div class="nav-links">
+        <button class="btn-secondary" onclick="window.location.href='login.html?mode=login'">Login</button>
+        <button class="btn-primary" onclick="window.location.href='login.html?mode=signup'">Sign Up</button>
+      </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <main class="landing-hero">
+      <div class="hero-container">
+        <div class="hero-text">
+          <div class="badge">✨ AI-Powered Assistant</div>
+          <h1>Your Intelligent <br><span class="gradient-text">Creative Companion</span></h1>
+          <p>Experience the power of intelligent conversations. DayBot helps you code, learn, and solve problems efficiently with a professional touch.</p>
+          <div class="landing-buttons">
+            <button class="btn-primary btn-lg" onclick="window.location.href='login.html?mode=signup'">Get Started Free <i class="fas fa-arrow-right"></i></button>
+            <button class="btn-secondary btn-lg" onclick="window.location.href='https://github.com'">Learn More</button>
+          </div>
+        </div>
+        
+        <div class="hero-visual">
+          <div class="orb-large"></div>
+          <div class="glass-card">
+            <div class="chat-mockup">
+              <div class="msg user">Buatin kode Python buat scraping</div>
+              <div class="msg bot">Oke, ini contoh kode menggunakan BeautifulSoup...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="landing-footer">
+      <p>&copy; 2024 DayBot AI. Built with ❤️ and Code.</p>
+    </footer>
+
+    <script>
+      // 1. Redirect jika sudah login
+      if (localStorage.getItem('auth_token')) {
+        window.location.href = '/';
+      }
+    </script>
+  </body>
+</html>

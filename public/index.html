@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>DayBot - ThinkAI</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  </head>
+
+  <body>
+    <div class="app-container">
+      <div class="sidebar-overlay" onclick="toggleSidebar()" aria-hidden="true"></div>
+      <!-- SIDEBAR -->
+      <aside class="sidebar">
+        <div class="logo"><i class="fas fa-cube"></i> Dayess Bot</div>
+
+        <div class="search-bar">
+          <i class="fas fa-search"></i>
+          <input type="text" placeholder="Search" />
+          <span>⌘K</span>
+        </div>
+
+        <nav>
+          <div class="nav-item active"><i class="fas fa-home"></i> Home</div>
+          <div class="nav-item"><i class="fas fa-compass"></i> Explore</div>
+          <div class="nav-item"><i class="fas fa-book"></i> Library</div>
+          <div class="nav-item" id="history-toggle" style="justify-content: space-between">
+            <span><i class="fas fa-history"></i> History</span>
+            <i class="fas fa-chevron-down" id="history-arrow" style="font-size: 0.8rem; transition: transform 0.3s"></i>
+          </div>
+          <div id="history-dropdown" class="history-dropdown"></div>
+        </nav>
+
+        <div class="user-profile">
+          <img src="https://ui-avatars.com/api/?name=Dias&background=random" />
+          <div class="user-info">
+            <span class="name">Dias</span>
+            <span class="email">diasizzat222@gmail.com</span>
+          </div>
+          <i class="fas fa-chevron-up"></i>
+        </div>
+      </aside>
+
+      <!-- MAIN -->
+      <main class="main-content">
+        <!-- HEADER -->
+        <header>
+          <button class="mobile-menu-btn" onclick="toggleSidebar()" aria-label="Open Menu"><i class="fas fa-bars"></i></button>
+          <div class="model-selector"><i class="fas fa-robot"></i> DayBot 1o <i class="fas fa-chevron-down"></i></div>
+
+          <div class="header-actions">
+            <button class="btn-new-chat" onclick="location.reload()" aria-label="New Chat"><i class="fas fa-plus"></i> <span class="btn-text">New Chat</span></button>
+            <button id="toggle" class="theme-btn" aria-label="Toggle Theme">🌙</button>
+            <div class="header-profile">
+              <img src="https://ui-avatars.com/api/?name=Dias" alt="Profile" />
+            </div>
+          </div>
+        </header>
+
+        <!-- LANDING -->
+        <section id="landing" class="content-center">
+          <div class="orb-container">
+            <div class="orb" id="orb"></div>
+          </div>
+
+          <h2 id="greeting"></h2>
+          <h3 class="sub-greeting">How Can I <span class="highlight">Assist You Today?</span></h3>
+
+          <div class="input-box-container">
+            <div class="input-wrapper">
+              <i class="fas fa-sparkles magic-icon"></i>
+              <textarea id="input" placeholder="Initiate a query or send a command to the AI..." rows="1" autocomplete="off"></textarea>
+            </div>
+
+            <div class="input-footer">
+              <div class="tools">
+                <button aria-label="Attach File"><i class="fas fa-paperclip"></i></button>
+                <button aria-label="Reasoning Mode"><i class="fas fa-lightbulb"></i> <span class="btn-text">Reasoning</span></button>
+                <button aria-label="Image Generation"><i class="fas fa-wand-magic-sparkles"></i> <span class="btn-text">Image</span></button>
+                <button aria-label="Research Mode"><i class="fas fa-search"></i> <span class="btn-text">Research</span></button>
+              </div>
+
+              <button class="btn-send" onclick="send()" aria-label="Send Message">
+                <i class="fas fa-paper-plane"></i>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- CHAT -->
+        <section id="chat" class="hidden">
+          <div id="messages"></div>
+
+          <div class="chat-input-fixed">
+            <textarea id="chatInput" placeholder="Type your message..." rows="1" autocomplete="off"></textarea>
+
+            <button onclick="sendChat()" aria-label="Send Message">
+              <i class="fas fa-paper-plane"></i>
+            </button>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>

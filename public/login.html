@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DayBot - Login</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  </head>
+  <body>
+    <!-- Menggunakan class auth-overlay tapi dengan background solid agar full page -->
+    <div class="auth-overlay" style="position: fixed; background: var(--bg-app)">
+      <div class="auth-box">
+        <h2 id="auth-title">Welcome Back</h2>
+        <input type="email" id="auth-email" class="auth-input" placeholder="Email Address" />
+        <input type="password" id="auth-pass" class="auth-input" placeholder="Password" />
+
+        <button id="auth-submit" class="auth-btn" onclick="submitAuth()">Login</button>
+
+        <div class="auth-link" id="auth-toggle" onclick="toggleMode()">Need an account? Sign Up</div>
+
+        <div class="auth-link" onclick="window.location.href='landing.html'" style="margin-top: 20px; font-size: 0.8rem; color: var(--text-muted)">&larr; Back to Home</div>
+      </div>
+    </div>
+
+    <script>
+      // Redirect jika sudah login
+      if (localStorage.getItem('auth_token')) {
+        window.location.href = '/';
+      }
+
+      // Cek mode dari URL (misal: login.html?mode=signup)
+      const params = new URLSearchParams(window.location.search);
+      let isLogin = params.get('mode') !== 'signup';
+
+      function updateUI() {
+        const title = document.getElementById('auth-title');
+        const btn = document.getElementById('auth-submit');
+        const toggle = document.getElementById('auth-toggle');
+
+        if (isLogin) {
+          title.textContent = 'Welcome Back';
+          btn.textContent = 'Login';
+          toggle.textContent = 'Need an account? Sign Up';
+        } else {
+          title.textContent = 'Create Account';
+          btn.textContent = 'Sign Up';
+          toggle.textContent = 'Have an account? Login';
+        }
+      }
+
+      function toggleMode() {
+        isLogin = !isLogin;
+        updateUI();
+      }
+
+      async function submitAuth() {
+        const email = document.getElementById('auth-email').value;
+        const password = document.getElementById('auth-pass').value;
+        const endpoint = isLogin ? '/auth/login' : '/auth/signup';
+
+        try {
+          const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password }),
+          });
+          const data = await res.json();
+
+          if (res.ok) {
+            if (data.token) {
+              localStorage.setItem('auth_token', data.token);
+              window.location.href = '/';
+            } else {
+              alert(data.message); // Pesan sukses registrasi
+              if (!isLogin) toggleMode(); // Pindah ke login setelah daftar
+            }
+          } else {
+            alert(data.error);
+          }
+        } catch (e) {
+          console.error(e);
+          alert('Connection error');
+        }
+      }
+
+      // Init UI saat halaman dimuat
+      updateUI();
+    </script>
+  </body>
+</html>
