@@ -78,7 +78,8 @@
 
             <div class="input-footer">
               <div class="tools">
-                <button aria-label="Attach File"><i class="fas fa-paperclip"></i></button>
+                <input type="file" id="fileUpload" accept=".pdf,image/*" style="display: none;" onchange="handleFileUpload(this)">
+                <button aria-label="Attach File" onclick="document.getElementById('fileUpload').click()"><i class="fas fa-paperclip"></i></button>
                 <button aria-label="Reasoning Mode"><i class="fas fa-lightbulb"></i> <span class="btn-text">Reasoning</span></button>
                 <button aria-label="Image Generation"><i class="fas fa-wand-magic-sparkles"></i> <span class="btn-text">Image</span></button>
                 <button aria-label="Research Mode"><i class="fas fa-search"></i> <span class="btn-text">Research</span></button>

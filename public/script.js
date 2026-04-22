@@ -17,6 +17,9 @@ let isGenerating = false;
 // === AUTH STATE ===
 let authToken = localStorage.getItem('auth_token');
 
+// === FILE STATE ===
+let attachedFile = null;
+
 // === 0. SESSION MANAGEMENT ===
 // Membuat ID unik sederhana menggunakan timestamp
 let currentSessionId = localStorage.getItem('last_session_id') || 'chat-' + Date.now();
@@ -119,7 +122,7 @@ function stopGeneration() {
 
 // === 5. CORE CHAT LOGIC ===
 async function processChat(text) {
-  if (!text) return;
+  if (!text && !attachedFile) return;
   if (isGenerating) return; // Cegah double submit
 
   isGenerating = true;
@@ -135,7 +138,14 @@ async function processChat(text) {
   // Add User Message
   const userDiv = document.createElement('div');
   userDiv.className = 'msg user';
-  userDiv.textContent = text;
+  
+  if (attachedFile) {
+    userDiv.innerHTML = text ? text.replace(/\n/g, '<br>') + `<br><small style="opacity:0.8"><i>📄 Melampirkan: ${attachedFile.name}</i></small>` 
+                             : `<i>📄 Melampirkan: ${attachedFile.name}</i>`;
+  } else {
+    userDiv.textContent = text;
+  }
+  
   messages.appendChild(userDiv);
   messages.scrollTop = messages.scrollHeight;
 
@@ -147,6 +157,45 @@ async function processChat(text) {
   messages.appendChild(botDiv);
 
   try {
+    let finalPayloadText = text || '';
+
+    // PENANGANAN UPLOAD SEBELUM CHAT
+    if (attachedFile) {
+      botDiv.innerHTML = '<span class="typing">Mengekstrak dokumen... (Mohon tunggu)</span>';
+      const formData = new FormData();
+      formData.append('file', attachedFile);
+
+      const uploadRes = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${authToken}` },
+        body: formData,
+      });
+
+      const uploadData = await uploadRes.json();
+      
+      if (uploadRes.ok && uploadData.text) {
+        finalPayloadText = `${finalPayloadText}\n\n[Isi Dokumen ${attachedFile.name}]:\n${uploadData.text}`;
+      } else {
+        throw new Error(uploadData.error || 'Gagal mengekstrak dokumen.');
+      }
+
+      // Bersihkan indikator lampiran
+      attachedFile = null;
+      document.querySelectorAll('input[type="file"]').forEach(inp => {
+        inp.value = '';
+        const btn = inp.nextElementSibling;
+        if (btn) {
+          const icon = btn.querySelector('i');
+          if (icon) icon.className = 'fas fa-paperclip';
+          btn.style.color = '';
+        }
+      });
+      mainInput.placeholder = "Initiate a query or send a command to the AI...";
+      chatInput.placeholder = "Type your message...";
+      
+      botDiv.innerHTML = '<span class="typing">Memikirkan kecocokan...</span>';
+    }
+
     const res = await fetch('/chat', {
       method: 'POST',
       headers: {
@@ -233,7 +282,7 @@ function send() {
     return;
   }
   const text = mainInput.value.trim();
-  if (!text) return;
+  if (!text && !attachedFile) return;
   processChat(text);
   mainInput.value = '';
   mainInput.style.height = 'auto';
@@ -245,7 +294,7 @@ function sendChat() {
     return;
   }
   const text = chatInput.value.trim();
-  if (!text) return;
+  if (!text && !attachedFile) return;
   processChat(text);
   chatInput.value = '';
   chatInput.style.height = 'auto';
@@ -460,6 +509,22 @@ async function loadChatSession(id) {
 window.toggleSidebar = function () {
   sidebar.classList.toggle('active');
   sidebarOverlay.classList.toggle('active');
+};
+
+// === 12. FILE UPLOAD LOGIC ===
+window.handleFileUpload = function (input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  attachedFile = file;
+
+  // Ganti klip jadi ikon file berwarna biru (success state)
+  const btnIcon = input.nextElementSibling.querySelector('i');
+  btnIcon.className = 'fas fa-file-alt'; 
+  input.nextElementSibling.style.color = 'var(--primary)';
+
+  mainInput.placeholder = `Melampirkan: ${file.name} - Ketik pesan tambahan atau kirim...`;
+  chatInput.placeholder = `Melampirkan: ${file.name} - Ketik pesan tambahan atau kirim...`;
 };
 
 // Init

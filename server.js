@@ -5,30 +5,49 @@ import nodemailer from 'nodemailer';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
+import multer from 'multer';
+import Tesseract from 'tesseract.js';
 import { SYSTEM_PROMPT } from './prompt.js';
 import db from './database.js';
+import * as pdfParseModule from 'pdf-parse';
+import dotenv from 'dotenv';
+
+// Load Environment Variables
+dotenv.config();
+
+const pdfParse = pdfParseModule.PDFParse;
 
 const app = express();
-const PORT = 3000;
-const SECRET_KEY = 'rahasia_super_aman_ganti_ini_di_prod'; // Kunci untuk token login
-const OLLAMA_URL = 'http://localhost:11434/api/chat';
-const MODEL = 'llama3:latest';
+const PORT = process.env.PORT || 3000;
+const SECRET_KEY = process.env.JWT_SECRET || 'rahasia_super_aman_ganti_ini_di_prod';
+const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434/api/chat';
+const MODEL = process.env.AI_MODEL || 'llama3:latest';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+// === UPLOAD CONFIG (Multer) ===
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadDir),
+  filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname.replace(/\s+/g, '-')),
+});
+const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB limit
+
 // === EMAIL CONFIGURATION ===
-// GANTI DENGAN EMAIL ASLI KAMU UNTUK FITUR VERIFIKASI
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: 'diasizzat222@gmail.com', // GANTI DENGAN EMAIL GMAIL ASLI KAMU
-    pass: 'qbzt dust vpof uoyr', // GANTI DENGAN APP PASSWORD (16 DIGIT) DARI GOOGLE, BUKAN PASSWORD LOGIN
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
   },
 });
 
@@ -95,6 +114,60 @@ app.post('/auth/login', (req, res) => {
 
     const token = jwt.sign({ id: user.id, email: user.email }, SECRET_KEY, { expiresIn: '7d' });
     res.json({ token, email: user.email });
+  });
+});
+
+// 4. Forgot Password
+app.post('/auth/forgot-password', (req, res) => {
+  const { email } = req.body;
+  db.get(`SELECT * FROM users WHERE email = ?`, [email], (err, user) => {
+    if (!user) return res.status(400).json({ error: 'Email tidak ditemukan.' });
+
+    // Build secret for this specific user
+    const secret = SECRET_KEY + user.password;
+    const token = jwt.sign({ id: user.id, email: user.email }, secret, { expiresIn: '15m' });
+
+    const host = req.get('host');
+    const protocol = req.headers['x-forwarded-proto'] || 'http';
+    const link = `${protocol}://${host}/login.html?mode=reset&token=${token}&id=${user.id}`;
+    
+    const mailOptions = {
+      to: email,
+      subject: 'Reset Password AI Chatbot',
+      html: `<p>Klik link ini untuk reset password kamu (berlaku 15 menit): <br><br> <a href="${link}">Reset Password</a></p>`,
+    };
+
+    transporter.sendMail(mailOptions, (err, info) => {
+      if (err) console.log('Gagal kirim email reset (cek config):', err);
+      else console.log('Email reset terkirim:', info.response);
+    });
+
+    res.json({ message: 'Tautan reset password telah dikirim ke email.' });
+  });
+});
+
+// 5. Reset Password
+app.post('/auth/reset-password', async (req, res) => {
+  const { id, token, newPassword } = req.body;
+  
+  if (!id || !token || !newPassword) {
+    return res.status(400).json({ error: 'Data tidak lengkap.' });
+  }
+
+  db.get(`SELECT * FROM users WHERE id = ?`, [id], async (err, user) => {
+    if (!user) return res.status(400).json({ error: 'User tidak valid.' });
+
+    const secret = SECRET_KEY + user.password;
+    try {
+      jwt.verify(token, secret);
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      db.run(`UPDATE users SET password = ? WHERE id = ?`, [hashedPassword, id], (err) => {
+        if (err) return res.status(500).json({ error: 'Gagal mengubah password.' });
+        res.json({ message: 'Password berhasil diubah. Silakan login.' });
+      });
+    } catch (e) {
+      res.status(400).json({ error: 'Token tidak valid atau telah kadaluarsa.' });
+    }
   });
 });
 
@@ -209,6 +282,41 @@ app.post('/chat', authenticate, async (req, res) => {
   } catch (err) {
     console.error(err);
     if (!res.headersSent) res.status(500).send('Server Error');
+  }
+});
+
+// === FILE UPLOAD & OCR ENDPOINT ===
+app.post('/api/upload', authenticate, upload.single('file'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Tidak ada file yang diunggah.' });
+
+  const filePath = req.file.path;
+  const mimeType = req.file.mimetype;
+  let extractedText = '';
+
+  try {
+    if (mimeType === 'application/pdf') {
+      const dataBuffer = fs.readFileSync(filePath);
+      const pdfData = await pdfParse(dataBuffer);
+      extractedText = pdfData.text;
+    } else if (mimeType.startsWith('image/')) {
+      const { data: { text } } = await Tesseract.recognize(filePath, 'ind+eng', {
+        logger: m => console.log('Tesseract:', m.status, Math.round(m.progress * 100) + '%')
+      });
+      extractedText = text;
+    } else {
+      // Hapus file yang tidak didukung
+      fs.unlinkSync(filePath);
+      return res.status(400).json({ error: 'Format file tidak didukung. Harap unggah PDF atau Gambar.' });
+    }
+
+    // Hapus file setelah diekstrak untuk hemat ruang
+    fs.unlinkSync(filePath);
+
+    res.json({ fileName: req.file.originalname, text: extractedText.trim() });
+  } catch (err) {
+    console.error('OCR/PDF Extract Error:', err);
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    res.status(500).json({ error: `Gagal mengekstrak teks dari file: ${err.message}` });
   }
 });
 

@@ -18,6 +18,8 @@
         <button id="auth-submit" class="auth-btn" onclick="submitAuth()">Login</button>
 
         <div class="auth-link" id="auth-toggle" onclick="toggleMode()">Need an account? Sign Up</div>
+        
+        <div class="auth-link" id="forgot-toggle" onclick="goToForgot()" style="margin-top: 10px; font-size: 0.85rem;">Forgot Password?</div>
 
         <div class="auth-link" onclick="window.location.href='landing.html'" style="margin-top: 20px; font-size: 0.8rem; color: var(--text-muted)">&larr; Back to Home</div>
       </div>
@@ -31,49 +33,102 @@
 
       // Cek mode dari URL (misal: login.html?mode=signup)
       const params = new URLSearchParams(window.location.search);
-      let isLogin = params.get('mode') !== 'signup';
+      let authMode = params.get('mode');
+      if (!authMode) authMode = 'login';
+      const resetToken = params.get('token');
+      const resetId = params.get('id');
 
       function updateUI() {
         const title = document.getElementById('auth-title');
         const btn = document.getElementById('auth-submit');
         const toggle = document.getElementById('auth-toggle');
+        const forgotToggle = document.getElementById('forgot-toggle');
+        const emailInput = document.getElementById('auth-email');
+        const passInput = document.getElementById('auth-pass');
 
-        if (isLogin) {
+        if (authMode === 'login') {
           title.textContent = 'Welcome Back';
           btn.textContent = 'Login';
           toggle.textContent = 'Need an account? Sign Up';
-        } else {
+          toggle.style.display = 'block';
+          forgotToggle.style.display = 'block';
+          emailInput.style.display = 'block';
+          passInput.style.display = 'block';
+          passInput.placeholder = 'Password';
+        } else if (authMode === 'signup') {
           title.textContent = 'Create Account';
           btn.textContent = 'Sign Up';
           toggle.textContent = 'Have an account? Login';
+          toggle.style.display = 'block';
+          forgotToggle.style.display = 'none';
+          emailInput.style.display = 'block';
+          passInput.style.display = 'block';
+          passInput.placeholder = 'Password';
+        } else if (authMode === 'forgot') {
+          title.textContent = 'Reset Password';
+          btn.textContent = 'Send Reset Link';
+          toggle.textContent = 'Back to Login';
+          toggle.style.display = 'block';
+          forgotToggle.style.display = 'none';
+          emailInput.style.display = 'block';
+          passInput.style.display = 'none';
+        } else if (authMode === 'reset') {
+          title.textContent = 'Set New Password';
+          btn.textContent = 'Save Password';
+          toggle.style.display = 'none';
+          forgotToggle.style.display = 'none';
+          emailInput.style.display = 'none';
+          passInput.style.display = 'block';
+          passInput.placeholder = 'New Password';
         }
       }
 
       function toggleMode() {
-        isLogin = !isLogin;
+        if (authMode === 'login') authMode = 'signup';
+        else if (authMode === 'signup') authMode = 'login';
+        else if (authMode === 'forgot') authMode = 'login';
+        updateUI();
+      }
+
+      function goToForgot() {
+        authMode = 'forgot';
         updateUI();
       }
 
       async function submitAuth() {
         const email = document.getElementById('auth-email').value;
         const password = document.getElementById('auth-pass').value;
-        const endpoint = isLogin ? '/auth/login' : '/auth/signup';
+        
+        let endpoint = '/auth/login';
+        let bodyPayload = { email, password };
+        
+        if (authMode === 'signup') {
+          endpoint = '/auth/signup';
+        } else if (authMode === 'forgot') {
+          endpoint = '/auth/forgot-password';
+          bodyPayload = { email };
+        } else if (authMode === 'reset') {
+          endpoint = '/auth/reset-password';
+          bodyPayload = { id: resetId, token: resetToken, newPassword: password };
+        }
 
         try {
           const res = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password }),
+            body: JSON.stringify(bodyPayload),
           });
           const data = await res.json();
 
           if (res.ok) {
-            if (data.token) {
+            if (data.token && authMode === 'login') {
               localStorage.setItem('auth_token', data.token);
               window.location.href = '/';
             } else {
-              alert(data.message); // Pesan sukses registrasi
-              if (!isLogin) toggleMode(); // Pindah ke login setelah daftar
+              alert(data.message);
+              if (authMode === 'signup' || authMode === 'reset' || authMode === 'forgot') {
+                window.location.href = 'login.html';
+              }
             }
           } else {
             alert(data.error);
